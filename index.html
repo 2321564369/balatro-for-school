@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+  <meta charset="utf-8">
+  <title>Balatro Fullscreen</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      background: #000;
+      display: flex;
+      flex-direction: column;
+    }
+    #toolbar {
+      background: #222;
+      color: white;
+      padding: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: sans-serif;
+      z-index: 9999;
+    }
+    #gameFrame {
+      flex: 1;
+      border: none;
+      width: 100%;
+      height: 100%;
+    }
+    button {
+      background: #28a745;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 12px;
+      cursor: pointer;
+      color: white;
+      margin-left: 5px;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="toolbar">
+    <button id="musicBtn">🎵 Music</button>
+    <div>
+      <button id="saveBtn">💾 Save</button>
+      <button id="loadBtn">📂 Load</button>
+    </div>
+  </div>
+
+  <iframe id="gameFrame" src="game.html"></iframe>
+
+  <script>
+    const iframe = document.getElementById("gameFrame");
+    const music = new Audio("01.%20Main%20Theme.mp3"); // put your soundtrack in the same folder
+    music.loop = true;
+
+    document.getElementById("musicBtn").onclick = () => {
+      if (music.paused) music.play(); else music.pause();
+    };
+
+    const saveKey = "balatro_save";
+    const collectionsKey = "balatro_collections";
+
+    document.getElementById("saveBtn").onclick = () => {
+      iframe.contentWindow.postMessage({ type: "REQUEST_SAVE" }, "*");
+      iframe.contentWindow.postMessage({ type: "REQUEST_COLLECTIONS" }, "*");
+      alert("Save requested!");
+    };
+
+    document.getElementById("loadBtn").onclick = () => {
+      const save = localStorage.getItem(saveKey);
+      if (save) {
+        iframe.contentWindow.postMessage({ type: "RESTORE_SAVE", payload: JSON.parse(save) }, "*");
+      }
+      const collections = localStorage.getItem(collectionsKey);
+      if (collections) {
+        iframe.contentWindow.postMessage({ type: "RESTORE_COLLECTIONS", payload: JSON.parse(collections) }, "*");
+      }
+      alert("Load requested!");
+    };
+
+    window.addEventListener("message", (event) => {
+      if (event.data.type === "GAME_SAVE") {
+        localStorage.setItem(saveKey, JSON.stringify(event.data.payload));
+      }
+      if (event.data.type === "COLLECTIONS_DATA" || event.data.type === "COLLECTIONS_UPDATE") {
+        localStorage.setItem(collectionsKey, JSON.stringify(event.data.payload));
+      }
+    });
+  </script>
+</body>
+</html>
