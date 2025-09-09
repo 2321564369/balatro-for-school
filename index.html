@@ -1,123 +1,73 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Launch Balatro</title>
+  <meta charset="utf-8">
+  <title>Balatro</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body {
+    html, body {
       margin: 0;
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: #111;
-      font-family: sans-serif;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      background: #000;
     }
-    button {
-      padding: 15px 30px;
-      font-size: 20px;
-      cursor: pointer;
-      border-radius: 10px;
-      border: none;
-      background: #28a745;
-      color: #fff;
+    canvas {
+      display: block;
+      margin: auto;
+      background: #000;
     }
   </style>
 </head>
 <body>
-  <button id="launchBtn">▶ Launch Balatro</button>
-
+  <script src="game.js"></script>
   <script>
-    document.getElementById("launchBtn").onclick = function() {
-      var newWin = window.open("about:blank", "_blank", "width=1024,height=768");
+    /* 
+      🔗 Communication hooks for external launcher
+      These allow save + collections sync via postMessage
+    */
 
-      if (!newWin) {
-        alert("Popup blocked! Allow popups for this site.");
-        return;
+    // Fake placeholders — your Balatro code must define getSave(), setSave(), getCollections(), setCollections()
+    function getSave() {
+      try {
+        return JSON.parse(localStorage.getItem("balatro_save")) || {};
+      } catch {
+        return {};
       }
+    }
 
-      var popupHTML = `
-<!DOCTYPE html>
-<html lang="en-us">
-<head>
-<meta charset="utf-8">
-<title>Balatro Popup</title>
-<style>
-  html, body { margin:0; padding:0; height:100%; width:100%; overflow:hidden; background:#000; display:flex; flex-direction:column; }
-  #toolbar { background:#222; color:#fff; padding:6px; display:flex; justify-content:space-between; align-items:center; font-family:sans-serif; z-index:9999; }
-  #gameCanvas { flex:1; width:100%; height:100%; }
-  button { background:#28a745; border:none; border-radius:6px; padding:6px 12px; cursor:pointer; color:white; margin-left:5px; }
-</style>
-</head>
-<body>
-<div id="toolbar">
-  <button id="musicBtn">🎵 Music</button>
-  <div>
-    <button id="saveBtn">💾 Save</button>
-    <button id="loadBtn">📂 Load</button>
-  </div>
-</div>
+    function setSave(data) {
+      localStorage.setItem("balatro_save", JSON.stringify(data));
+    }
 
-<canvas id="gameCanvas"></canvas>
-<canvas id="loadingCanvas" width="800" height="600" style="position:absolute;top:0;left:0;"></canvas>
+    function getCollections() {
+      try {
+        return JSON.parse(localStorage.getItem("balatro_collections")) || {};
+      } catch {
+        return {};
+      }
+    }
 
-<script src="love.js"></script>
-<script src="consolewrapper.js"></script>
-<script>
-var Module = {
-  arguments:["./game.love"],
-  INITIAL_MEMORY: 256000000,
-  printErr: console.error.bind(console),
-  canvas: document.getElementById('gameCanvas'),
-  setStatus:function(text){
-    var canvas=document.getElementById('loadingCanvas');
-    var ctx=canvas.getContext('2d');
-    if(text){
-      ctx.fillStyle="rgb(142,195,227)";
-      ctx.fillRect(0,0,canvas.width,canvas.height);
-      ctx.font='2em Arial';
-      ctx.fillStyle="rgb(11,86,117)";
-      ctx.textAlign='center';
-      ctx.fillText(text, canvas.width/2, canvas.height/2);
-    } else { canvas.style.display='none'; Module.canvas.style.visibility='visible'; }
-  }
-};
-window.onload=function(){ if(typeof Love==='function') Love(Module); };
+    function setCollections(data) {
+      localStorage.setItem("balatro_collections", JSON.stringify(data));
+    }
 
-// Music
-const bgm = new Audio("01.%20Main%20Theme.mp3");
-bgm.loop=true; bgm.volume=0.3;
-document.getElementById("musicBtn").onclick = () => { bgm.paused ? bgm.play() : bgm.pause(); };
-
-// Save/Load
-const saveKey = "balatro_save";
-const collectionsKey = "balatro_collections";
-function getCollections(){ try{return JSON.parse(localStorage.getItem(collectionsKey)||"{}"); }catch(e){return{};} }
-function setCollections(data){ localStorage.setItem(collectionsKey,JSON.stringify(data)); }
-
-document.getElementById("saveBtn").onclick = () => {
-  if(Module.LOVE && Module.LOVE.saveData){ const progress = Module.LOVE.saveData(); localStorage.setItem(saveKey, JSON.stringify(progress)); }
-  localStorage.setItem(collectionsKey, JSON.stringify(getCollections()));
-  alert("Progress & collections saved!");
-};
-
-document.getElementById("loadBtn").onclick = () => {
-  const save = localStorage.getItem(saveKey);
-  if(save && Module.LOVE && Module.LOVE.loadData){ Module.LOVE.loadData(JSON.parse(save)); }
-  const collections = localStorage.getItem(collectionsKey);
-  if(collections) setCollections(JSON.parse(collections));
-  alert("Progress & collections loaded!");
-};
-</script>
-<script src="game.js"></script>
-</body>
-</html>
-      `;
-
-      newWin.document.open();
-      newWin.document.write(popupHTML);
-      newWin.document.close();
-    };
+    // Listen for messages from parent
+    window.addEventListener("message", (event) => {
+      if (event.data.type === "REQUEST_SAVE") {
+        window.parent.postMessage({ type: "GAME_SAVE", payload: getSave() }, "*");
+      }
+      if (event.data.type === "RESTORE_SAVE") {
+        setSave(event.data.payload || {});
+      }
+      if (event.data.type === "REQUEST_COLLECTIONS") {
+        window.parent.postMessage({ type: "COLLECTIONS_DATA", payload: getCollections() }, "*");
+      }
+      if (event.data.type === "RESTORE_COLLECTIONS") {
+        setCollections(event.data.payload || {});
+      }
+    });
   </script>
 </body>
 </html>
